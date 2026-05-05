@@ -270,7 +270,6 @@ tr:hover td{background:rgba(0,158,227,0.02)}
     <div class="filter-tabs" id="filterTabs">
       <button class="filter-tab active" data-f="todas" onclick="setFiltro('todas',this)">Todas <span class="filter-tab-count" id="cnt-todas"></span></button>
       <button class="filter-tab" data-f="sin_despachar" onclick="setFiltro('sin_despachar',this)">📋 Sin despachar <span class="filter-tab-count" id="cnt-sin_despachar"></span></button>
-      <button class="filter-tab" data-f="por_enviar" onclick="setFiltro('por_enviar',this)">🟠 Por enviar <span class="filter-tab-count" id="cnt-por_enviar"></span></button>
       <button class="filter-tab" data-f="en_transito" onclick="setFiltro('en_transito',this)">🚚 En tránsito <span class="filter-tab-count" id="cnt-en_transito"></span></button>
       <button class="filter-tab" data-f="entregadas" onclick="setFiltro('entregadas',this)">✓ Entregadas <span class="filter-tab-count" id="cnt-entregadas"></span></button>
       <button class="filter-tab" data-f="retiro_local" onclick="setFiltro('retiro_local',this)">🏬 Retiro en local <span class="filter-tab-count" id="cnt-retiro_local"></span></button>
@@ -435,11 +434,21 @@ function detectarCarrier(o) {
 }
 
 function esRetiroLocal(o) {
+  // Retiro real con sucursal
   if (o.shipping_pickup_type === "pickup") return true;
-  const code = String(o.shipping_option_code || "").toLowerCase();
-  const opt  = String(o.shipping_option || "").toLowerCase();
-  if (code.includes("retiro") || code.includes("pickup") || code.includes("local")) return true;
-  if (opt.includes("retiro") || opt.includes("pickup") || opt.includes("local")) return true;
+  // Venta cargada manual / draft / a convenir → mismo flujo operativo (sin correo)
+  if (o.shipping === "draft") return true;
+  if (String(o.shipping_option_code || "").startsWith("draft_")) return true;
+  // Fulfillment dice "A convenir" o pickup
+  const f = o.fulfillments?.[0];
+  if (f) {
+    const carrier = String(f.shipping?.carrier?.name || "").toLowerCase();
+    if (carrier.includes("convenir") || carrier.includes("retiro")) return true;
+    if (f.shipping?.type === "pickup") return true;
+  }
+  // Texto del shipping_option
+  const opt = String(o.shipping_option || "").toLowerCase();
+  if (opt.includes("retiro") || opt.includes("convenir") || opt.includes("local")) return true;
   return false;
 }
 
@@ -474,7 +483,7 @@ function setCacheCA(code, data) { caCache[code] = { ...data, ts: Date.now() }; }
 // DETECCIÓN DE ESTADO CONSOLIDADO
 // ═══════════════════════════════════════════════════════════════
 function getEstado(o) {
-  // retorna: 'retiro_local' | 'sin_despachar' | 'por_enviar' | 'en_transito' | 'entregada'
+  // retorna: 'retiro_local' | 'sin_despachar' | 'en_transito' | 'entregada'
   if (esRetiroLocal(o)) return "retiro_local";
 
   const codigo = extraerTracking(o);
@@ -483,30 +492,16 @@ function getEstado(o) {
   const caStatus = ca?.status || "";
 
   // Entregada: TN dice delivered, o CA confirma
-  const entregada = o.shipping_status === "delivered" || caStatus === "entregado" || caStatus === "en_sucursal";
-  if (entregada) return "entregada";
-
-  // Sin despachar: ni shipped_at ni shipping_status shipped
-  const despachada = o.shipping_status === "shipped" || o.shipping_status === "fulfilled" || !!o.shipped_at;
-  if (!despachada) return "sin_despachar";
-
-  // Despachada — ¿en tránsito o por enviar?
-  if (carrier === "andreani") {
-    // Andreani sin scrape → si shipped_at hace mucho asumimos tránsito; sin tracking aún = por_enviar
-    if (codigo) return "en_transito";
-    return "por_enviar";
-  } else {
-    // CA con código y CA dice algo de movimiento
-    if (codigo && ca && ["en_camino","intento_entrega","procesando"].includes(caStatus)) return "en_transito";
-    if (codigo && (!ca || caStatus === "sin_datos" || caStatus === "")) {
-      // Despachada hace +2 días sin movimiento de correo → por_enviar
-      const dias = o.shipped_at ? (Date.now() - new Date(o.shipped_at).getTime())/86400000 : 0;
-      if (dias < 2) return "por_enviar";
-      return "en_transito"; // suponemos en tránsito aunque CA no reporte
-    }
-    if (!codigo) return "por_enviar";
+  if (o.shipping_status === "delivered" || caStatus === "entregado" || caStatus === "en_sucursal") {
+    return "entregada";
   }
-  return "por_enviar";
+
+  // En tránsito: si TN la marcó como despachada (independiente de lo que diga el correo)
+  if (o.shipping_status === "shipped" || o.shipping_status === "fulfilled" || !!o.shipped_at) {
+    return "en_transito";
+  }
+
+  return "sin_despachar";
 }
 
 function esDemorada(o) {
@@ -643,12 +638,20 @@ function pasaFiltro(o, filtro) {
   if (filtro === "todas") return e !== "retiro_local"; // retiro tiene su propio filtro
   if (filtro === "retiro_local") return e === "retiro_local";
   if (filtro === "sin_despachar") return e === "sin_despachar";
-  if (filtro === "por_enviar") return e === "por_enviar";
   if (filtro === "en_transito") return e === "en_transito";
   if (filtro === "entregadas") return e === "entregada";
-  if (filtro === "pend_review") return e === "entregada" && !persistedState[o.number]?.wa_review_at;
+  if (filtro === "pend_review") return puedePedirReview(o) && !persistedState[o.number]?.wa_review_at;
   if (filtro === "demoras") return esDemorada(o);
   return true;
+}
+
+// Una orden puede recibir review si está entregada (CA/TN delivered)
+// o si es retiro local y se cerró (closed_at)
+function puedePedirReview(o) {
+  const e = getEstado(o);
+  if (e === "entregada") return true;
+  if (e === "retiro_local" && o.closed_at) return true;
+  return false;
 }
 
 function filtrarYRenderizar() {
@@ -678,10 +681,9 @@ function actualizarStats() {
   let entregadas = 0, pendReview = 0, transito = 0;
   for (const o of todasOrdenes) {
     const e = getEstado(o);
-    if (e === "entregada") {
-      entregadas++;
-      if (!persistedState[o.number]?.wa_review_at) pendReview++;
-    } else if (e === "en_transito") transito++;
+    if (e === "entregada") entregadas++;
+    if (e === "en_transito") transito++;
+    if (puedePedirReview(o) && !persistedState[o.number]?.wa_review_at) pendReview++;
   }
   document.getElementById("statTotal").textContent = todasOrdenes.length;
   document.getElementById("statEntregadas").textContent = entregadas;
@@ -691,7 +693,7 @@ function actualizarStats() {
 
 function actualizarBanner() {
   const demoras = todasOrdenes.filter(esDemorada).length;
-  const review = todasOrdenes.filter(o => getEstado(o)==="entregada" && !persistedState[o.number]?.wa_review_at).length;
+  const review = todasOrdenes.filter(o => puedePedirReview(o) && !persistedState[o.number]?.wa_review_at).length;
   document.getElementById("alertDemorasCount").textContent = demoras;
   document.getElementById("alertReviewCount").textContent = review;
   document.getElementById("alertDemoras").classList.toggle("has-items", demoras > 0);
@@ -699,16 +701,15 @@ function actualizarBanner() {
 }
 
 function actualizarCounts() {
-  const counts = { todas:0, sin_despachar:0, por_enviar:0, en_transito:0, entregadas:0, retiro_local:0, pend_review:0 };
+  const counts = { todas:0, sin_despachar:0, en_transito:0, entregadas:0, retiro_local:0, pend_review:0 };
   for (const o of todasOrdenes) {
     const e = getEstado(o);
     if (e !== "retiro_local") counts.todas++;
     if (e === "sin_despachar") counts.sin_despachar++;
-    if (e === "por_enviar")   counts.por_enviar++;
     if (e === "en_transito")  counts.en_transito++;
     if (e === "entregada")    counts.entregadas++;
     if (e === "retiro_local") counts.retiro_local++;
-    if (e === "entregada" && !persistedState[o.number]?.wa_review_at) counts.pend_review++;
+    if (puedePedirReview(o) && !persistedState[o.number]?.wa_review_at) counts.pend_review++;
   }
   Object.keys(counts).forEach(k => {
     const el = document.getElementById("cnt-"+k);
@@ -739,7 +740,8 @@ function renderTabla(lista) {
     // Tracking cell
     let trackingCell;
     if (estado === "retiro_local") {
-      trackingCell = `<span class="tracking-none">Retiro Vilanova</span>`;
+      const loc = o.fulfillments?.[0]?.assigned_location?.name || "Vilanova";
+      trackingCell = `<span class="tracking-none">📍 ${escHtml(loc)}</span>`;
     } else if (codigo) {
       const link = trackingLink(carrier, codigo);
       trackingCell = `<a class="tracking-code" href="${link}" target="_blank" title="Ver en ${carrier==="andreani"?"Andreani":"Correo Argentino"}">${codigo.substring(0,18)}…</a><span class="carrier-mini ${carrier}">${carrier==="andreani"?"AND":"CA"}</span>`;
@@ -750,22 +752,28 @@ function renderTabla(lista) {
     // Badge
     let badge;
     if (estado === "retiro_local") {
-      badge = `<span class="badge retiro"><span class="badge-dot"></span>Retiro local</span>`;
+      // Si está cerrada, "Retiro · Entregado", si no "Retiro local"
+      if (o.closed_at || o.shipping_status === "delivered") {
+        badge = `<span class="badge entregado"><span class="badge-dot"></span>Retiro · Entregada</span>`;
+      } else if (o.shipping_status === "shipped" || !!o.shipped_at) {
+        badge = `<span class="badge retiro"><span class="badge-dot"></span>Retiro · Enviada</span>`;
+      } else {
+        badge = `<span class="badge retiro"><span class="badge-dot"></span>Retiro local</span>`;
+      }
     } else if (estado === "sin_despachar") {
       badge = `<span class="badge sin_despachar"><span class="badge-dot"></span>Sin despachar</span>`;
-    } else if (estado === "por_enviar") {
-      badge = `<span class="badge por_enviar"><span class="badge-dot"></span>Por enviar</span>`;
     } else if (estado === "entregada") {
       badge = `<span class="badge entregado"><span class="badge-dot"></span>Entregado</span>`;
     } else if (carrier === "andreani") {
       badge = codigo
         ? `<span class="badge en_camino"><span class="badge-dot"></span>En tránsito</span>`
-        : `<span class="badge sin_datos"><span class="badge-dot"></span>Sin tracking</span>`;
+        : `<span class="badge en_camino"><span class="badge-dot"></span>Enviado · sin código</span>`;
     } else {
       // CA en tránsito
       const ca = codigo ? getCacheCA(codigo) : null;
-      if (!codigo) badge = `<span class="badge sin_datos"><span class="badge-dot"></span>Sin tracking</span>`;
-      else if (!ca) badge = `<span class="badge cargando"><span class="badge-spinner"></span>Consultando…</span>`;
+      if (!codigo) badge = `<span class="badge en_camino"><span class="badge-dot"></span>Enviado · sin código</span>`;
+      else if (!ca) badge = `<span class="badge cargando"><span class="badge-spinner"></span>Consultando CA…</span>`;
+      else if (ca.status === "sin_datos" || !ca.status) badge = `<span class="badge en_camino"><span class="badge-dot"></span>En tránsito</span>`;
       else { const i = caStatusInfo(ca.status); badge = `<span class="badge ${i.cls}"><span class="badge-dot"></span>${i.label}</span>`; }
     }
 
@@ -784,6 +792,8 @@ function renderTabla(lista) {
       } else if (o.shipping_status === "delivered") {
         fechaEntrega = `<span class="delivery-date">${formatFecha(o.shipped_at || o.updated_at)}</span>`;
       }
+    } else if (estado === "retiro_local" && o.closed_at) {
+      fechaEntrega = `<span class="delivery-date">${formatFecha(o.closed_at)}</span>`;
     }
 
     // ── BOTONES ──
@@ -807,10 +817,9 @@ function renderTabla(lista) {
       ? `<button class="act-btn act-track ${usedTrack?'used':''}" onclick="accionWA(event,${num},'tracking','${escPhone}','${escNombre}','${escProd}','${escCodigo}','${carrier}')" title="${titleTrack}">📦 Track</button>`
       : `<button class="act-btn act-track" disabled title="${!phone?'Sin teléfono':!codigo?'Sin tracking':'Retiro en local'}">📦 Track</button>`;
 
-    // 3. WA review (solo si entregada o retiro local)
+    // 3. WA review (solo si entregada o retiro cerrado)
     let btnReview = "";
-    const puedeReview = estado === "entregada" || estado === "retiro_local";
-    if (puedeReview) {
+    if (puedePedirReview(o)) {
       const usedRev = !!ps.wa_review_at;
       const titleRev = usedRev ? `Enviado: ${formatFecha(ps.wa_review_at)} · shift+click para limpiar` : "Pedir review por WA";
       btnReview = phone
