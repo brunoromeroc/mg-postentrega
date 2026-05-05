@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Post-Entrega · Market Gamer</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#06080a; --surface:#0c0f12; --surface2:#111518; --surface3:#181d22;
+  --border:#1c2228; --border2:#252d35; --text:#dce4ed;
+  --muted:#4a5a6a; --muted2:#6a7f92;
+  --accent:#009EE3; --accent-glow:rgba(0,158,227,0.15); --accent-dim:#001f30;
+  --green:#22c55e; --green-dim:#052010;
+  --yellow:#f59e0b; --yellow-dim:#1a1200;
+  --red:#ef4444; --red-dim:#1a0505;
+  --purple:#a855f7; --purple-dim:#1a0a2a;
+  --orange:#fb923c; --orange-dim:#1f0e02;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"IBM Plex Sans",sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:linear-gradient(rgba(0,158,227,0.025) 1px,transparent 1px),
+  linear-gradient(90deg,rgba(0,158,227,0.025) 1px,transparent 1px);background-size:40px 40px}
+body::after{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(ellipse 70% 50% at 50% 0%,rgba(0,158,227,0.06) 0%,transparent 60%)}
+
+.wrap{position:relative;z-index:1;max-width:1400px;margin:0 auto;padding:32px 24px 80px}
+
+/* Header */
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px}
+.logo-row{display:flex;align-items:center;gap:12px}
+.logo-badge{background:var(--accent);color:#06080a;font-family:"IBM Plex Mono",monospace;
+  font-size:11px;font-weight:700;letter-spacing:.1em;padding:6px 10px;border-radius:4px}
+.logo-text{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--muted2);
+  letter-spacing:.15em;text-transform:uppercase}
+.header-actions{display:flex;align-items:center;gap:10px}
+.sync-status{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--muted);
+  display:flex;align-items:center;gap:6px}
+.sync-dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.sync-dot.ok{background:var(--green);box-shadow:0 0 6px var(--green)}
+.sync-dot.error{background:var(--red);box-shadow:0 0 6px var(--red)}
+.sync-dot.syncing{background:var(--accent);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:8px;
+  font-family:"IBM Plex Sans",sans-serif;font-size:13px;font-weight:600;cursor:pointer;
+  border:1px solid var(--border2);transition:all .2s;background:var(--surface2);color:var(--text)}
+.btn-primary{background:var(--accent);color:#06080a;border-color:var(--accent)}
+.btn-primary:hover{background:#00b8ff}
+.btn-ghost{background:transparent;color:var(--muted2)}
+.btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* Alert banner */
+.alert-banner{display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap}
+.alert-card{flex:1;min-width:260px;background:var(--surface);border:1px solid var(--border2);
+  border-left:3px solid var(--muted);border-radius:8px;padding:12px 16px;cursor:pointer;
+  transition:all .2s;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.alert-card:hover{border-color:var(--accent)}
+.alert-card.has-items{border-left-color:var(--red)}
+.alert-card.has-items.review{border-left-color:var(--yellow)}
+.alert-card-content{display:flex;flex-direction:column;gap:2px}
+.alert-card-title{font-size:13px;font-weight:600;color:var(--text)}
+.alert-card-sub{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--muted2)}
+.alert-card-count{font-family:"IBM Plex Mono",monospace;font-size:24px;font-weight:700;color:var(--text)}
+.alert-card.has-items .alert-card-count{color:var(--red)}
+.alert-card.has-items.review .alert-card-count{color:var(--yellow)}
+
+/* Stats */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+.stat-card{background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:16px 18px}
+.stat-label{font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px}
+.stat-value{font-family:"IBM Plex Mono",monospace;font-size:24px;font-weight:700;color:var(--text)}
+
+/* Filters */
+.filter-row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:14px}
+.filter-tabs{display:flex;gap:6px;flex-wrap:wrap}
+.filter-tab{padding:8px 14px;background:var(--surface);border:1px solid var(--border2);
+  border-radius:8px;cursor:pointer;font-size:12px;color:var(--muted2);transition:all .2s;font-weight:500}
+.filter-tab:hover{border-color:var(--accent);color:var(--accent)}
+.filter-tab.active{background:var(--accent-dim);color:var(--accent);border-color:var(--accent)}
+.filter-tab-count{font-family:"IBM Plex Mono",monospace;font-size:10px;margin-left:6px;opacity:.7}
+
+.search-input{padding:8px 12px;background:var(--surface);border:1px solid var(--border2);
+  border-radius:8px;color:var(--text);font-size:13px;width:240px;font-family:inherit}
+.search-input:focus{outline:none;border-color:var(--accent)}
+
+/* Tabla */
+.table-wrap{background:var(--surface);border:1px solid var(--border2);border-radius:12px;overflow:hidden}
+table{width:100%;border-collapse:collapse}
+th{background:var(--surface2);padding:11px 14px;text-align:left;font-family:"IBM Plex Mono",monospace;
+  font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-weight:600;
+  border-bottom:1px solid var(--border2)}
+td{padding:13px 14px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(0,158,227,0.02)}
+
+.order-num{font-family:"IBM Plex Mono",monospace;color:var(--accent);font-weight:600;font-size:13px}
+.customer-name{font-weight:500;color:var(--text);font-size:13px}
+.customer-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.total-val{font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:13px}
+.tracking-code{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--accent);
+  text-decoration:none;display:inline-block}
+.tracking-code:hover{color:#00b8ff}
+.tracking-none{color:var(--muted);font-size:12px}
+
+/* Badge estado */
+.badge{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:5px;
+  font-size:11px;font-weight:600;font-family:"IBM Plex Mono",monospace;text-transform:uppercase;letter-spacing:.05em}
+.badge-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.badge-spinner{width:9px;height:9px;border:1.5px solid var(--muted);border-top-color:var(--accent);
+  border-radius:50%;animation:spin 1s linear infinite}
+.badge.entregado{background:var(--green-dim);color:var(--green)}
+.badge.entregado .badge-dot{background:var(--green)}
+.badge.en_camino{background:rgba(0,158,227,.1);color:var(--accent)}
+.badge.en_camino .badge-dot{background:var(--accent)}
+.badge.intento_entrega{background:var(--yellow-dim);color:var(--yellow)}
+.badge.intento_entrega .badge-dot{background:var(--yellow)}
+.badge.procesando{background:rgba(168,85,247,.1);color:var(--purple)}
+.badge.procesando .badge-dot{background:var(--purple)}
+.badge.devuelto{background:var(--red-dim);color:var(--red)}
+.badge.devuelto .badge-dot{background:var(--red)}
+.badge.sin_datos{background:var(--surface3);color:var(--muted)}
+.badge.sin_datos .badge-dot{background:var(--muted)}
+.badge.cargando{background:var(--surface3);color:var(--muted2)}
+.badge.sin_despachar{background:var(--surface3);color:var(--muted2)}
+.badge.sin_despachar .badge-dot{background:var(--muted)}
+.badge.por_enviar{background:var(--orange-dim);color:var(--orange)}
+.badge.por_enviar .badge-dot{background:var(--orange)}
+.badge.retiro{background:var(--purple-dim);color:var(--purple)}
+.badge.retiro .badge-dot{background:var(--purple)}
+
+.delivery-date{font-family:"IBM Plex Mono",monospace;color:var(--green);font-size:12px;font-weight:600}
+.delivery-dash{color:var(--muted)}
+
+/* Carrier mini badge */
+.carrier-mini{font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.05em;
+  padding:2px 5px;border-radius:3px;margin-left:6px;background:var(--surface3);color:var(--muted2);text-transform:uppercase}
+.carrier-mini.andreani{background:rgba(255,200,0,.08);color:#ffb800}
+.carrier-mini.ca{background:rgba(0,158,227,.08);color:var(--accent)}
+
+/* Acciones */
+.actions{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+.act-btn{padding:6px 9px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;
+  border:1px solid var(--border2);transition:all .15s;font-family:inherit;background:var(--surface2);color:var(--text);
+  display:inline-flex;align-items:center;gap:4px;position:relative}
+.act-btn:disabled{opacity:.35;cursor:not-allowed}
+.act-btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+
+.act-wa{background:rgba(37,211,102,.07);color:#25D366;border-color:rgba(37,211,102,.2)}
+.act-wa:hover:not(:disabled){background:rgba(37,211,102,.14);color:#25D366;border-color:#25D366}
+.act-wa.used{background:var(--green-dim);color:var(--green);border-color:rgba(34,197,94,.3)}
+
+.act-track{background:rgba(0,158,227,.07);color:var(--accent);border-color:rgba(0,158,227,.2)}
+.act-track:hover:not(:disabled){background:rgba(0,158,227,.15);color:var(--accent);border-color:var(--accent)}
+.act-track.used{background:var(--green-dim);color:var(--green);border-color:rgba(34,197,94,.3)}
+
+.act-review{background:var(--yellow-dim);color:var(--yellow);border:1px solid rgba(245,158,11,.25)}
+.act-review:hover:not(:disabled){background:rgba(245,158,11,.18)}
+.act-review.used{background:var(--green-dim);color:var(--green);border-color:rgba(34,197,94,.3)}
+
+.act-andreani{background:rgba(255,184,0,.07);color:#ffb800;border-color:rgba(255,184,0,.2)}
+.act-andreani:hover{background:rgba(255,184,0,.15);text-decoration:none}
+.act-note{background:var(--surface3);color:var(--muted2)}
+.act-note:hover{color:var(--accent)}
+
+/* Indicator dot */
+.act-btn.used::after{content:"";position:absolute;top:-2px;right:-2px;width:6px;height:6px;
+  background:var(--green);border-radius:50%;box-shadow:0 0 4px var(--green)}
+
+/* Loading */
+.big-spinner{width:36px;height:36px;border:3px solid var(--surface3);border-top-color:var(--accent);
+  border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-row td,.empty-row td{text-align:center;padding:60px 20px;color:var(--muted2);font-size:13px}
+
+/* Paginación */
+.pagination{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;
+  background:var(--surface2);border-top:1px solid var(--border2);font-size:12px;color:var(--muted2);
+  font-family:"IBM Plex Mono",monospace}
+.pag-btns{display:flex;gap:8px}
+.pag-btn{padding:6px 12px;background:var(--surface3);border:1px solid var(--border2);border-radius:6px;
+  color:var(--muted2);cursor:pointer;font-size:11px;font-family:inherit}
+.pag-btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.pag-btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* Modal */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:100;display:none;
+  align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px)}
+.modal-bg.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border2);border-radius:14px;
+  max-width:560px;width:100%;max-height:85vh;overflow-y:auto}
+.modal-head{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;
+  align-items:center;justify-content:space-between}
+.modal-title{font-size:15px;font-weight:600;color:var(--text)}
+.modal-close{background:transparent;border:none;color:var(--muted);font-size:22px;
+  cursor:pointer;padding:0;line-height:1;width:28px;height:28px}
+.modal-close:hover{color:var(--text)}
+.modal-body{padding:22px}
+.modal-section-title{font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.1em;margin:18px 0 8px;font-weight:600}
+.modal-section-title:first-child{margin-top:0}
+.modal-input,.modal-textarea{width:100%;padding:10px 12px;background:var(--bg);
+  border:1px solid var(--border2);border-radius:8px;color:var(--text);font-size:13px;font-family:inherit}
+.modal-textarea{resize:vertical;min-height:90px;font-family:"IBM Plex Mono",monospace;font-size:12px;line-height:1.5}
+.modal-input:focus,.modal-textarea:focus{outline:none;border-color:var(--accent)}
+.modal-hint{font-size:11px;color:var(--muted);margin-top:5px;font-family:"IBM Plex Mono",monospace}
+.modal-foot{padding:14px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px}
+
+/* Responsive */
+@media(max-width:900px){.stats{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:768px){
+  .wrap{padding:18px 12px}
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .filter-tabs{gap:4px}
+  .filter-tab{padding:6px 10px;font-size:11px}
+  table{font-size:12px}
+  th,td{padding:8px 10px}
+  .actions{flex-direction:column;gap:4px}
+  .search-input{width:100%}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="logo-row">
+      <span class="logo-badge">MG</span>
+      <span class="logo-text">Post-Entrega</span>
+    </div>
+    <div class="header-actions">
+      <span class="sync-status" id="syncStatus"><span class="sync-dot" id="syncDot"></span><span id="syncText">Inicializando…</span></span>
+      <button class="btn btn-ghost" onclick="abrirModalCfg()" title="Configuración">⚙</button>
+      <button class="btn btn-primary" id="refreshBtn" onclick="cargarOrdenes(true)">↻ Actualizar</button>
+    </div>
+  </div>
+
+  <!-- Alert banner -->
+  <div class="alert-banner">
+    <div class="alert-card" id="alertDemoras" onclick="setFiltro('demoras',null)">
+      <div class="alert-card-content">
+        <div class="alert-card-title">⚠ Demoras (+5 días sin movimiento)</div>
+        <div class="alert-card-sub">Click para filtrar</div>
+      </div>
+      <div class="alert-card-count" id="alertDemorasCount">0</div>
+    </div>
+    <div class="alert-card review" id="alertReview" onclick="setFiltro('pend_review',null)">
+      <div class="alert-card-content">
+        <div class="alert-card-title">⭐ Listas para review</div>
+        <div class="alert-card-sub">Entregadas sin review enviada</div>
+      </div>
+      <div class="alert-card-count" id="alertReviewCount">0</div>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat-card"><div class="stat-label">Total órdenes</div><div class="stat-value" id="statTotal">—</div></div>
+    <div class="stat-card"><div class="stat-label">En tránsito</div><div class="stat-value" id="statTransito">—</div></div>
+    <div class="stat-card"><div class="stat-label">Entregadas</div><div class="stat-value" id="statEntregadas">—</div></div>
+    <div class="stat-card"><div class="stat-label">Pendiente review</div><div class="stat-value" id="statPendReview">—</div></div>
+  </div>
+
+  <!-- Filtros -->
+  <div class="filter-row">
+    <div class="filter-tabs" id="filterTabs">
+      <button class="filter-tab active" data-f="todas" onclick="setFiltro('todas',this)">Todas <span class="filter-tab-count" id="cnt-todas"></span></button>
+      <button class="filter-tab" data-f="sin_despachar" onclick="setFiltro('sin_despachar',this)">📋 Sin despachar <span class="filter-tab-count" id="cnt-sin_despachar"></span></button>
+      <button class="filter-tab" data-f="por_enviar" onclick="setFiltro('por_enviar',this)">🟠 Por enviar <span class="filter-tab-count" id="cnt-por_enviar"></span></button>
+      <button class="filter-tab" data-f="en_transito" onclick="setFiltro('en_transito',this)">🚚 En tránsito <span class="filter-tab-count" id="cnt-en_transito"></span></button>
+      <button class="filter-tab" data-f="entregadas" onclick="setFiltro('entregadas',this)">✓ Entregadas <span class="filter-tab-count" id="cnt-entregadas"></span></button>
+      <button class="filter-tab" data-f="retiro_local" onclick="setFiltro('retiro_local',this)">🏬 Retiro en local <span class="filter-tab-count" id="cnt-retiro_local"></span></button>
+      <button class="filter-tab" data-f="pend_review" onclick="setFiltro('pend_review',this)">⭐ Pend. review <span class="filter-tab-count" id="cnt-pend_review"></span></button>
+    </div>
+    <input class="search-input" id="searchInput" type="text" placeholder="Buscar por #, nombre, teléfono…" oninput="filtrarYRenderizar()">
+  </div>
+
+  <!-- Tabla -->
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th>#</th><th>Fecha</th><th>Cliente</th><th>Total</th>
+        <th>Tracking</th><th>Estado</th><th>Entregado</th><th></th>
+      </tr></thead>
+      <tbody id="tbody">
+        <tr class="loading-row"><td colspan="8"><div class="big-spinner"></div>Cargando…</td></tr>
+      </tbody>
+    </table>
+    <div class="pagination">
+      <span id="pageInfo">Pág 1 de 1</span>
+      <div class="pag-btns">
+        <button class="pag-btn" id="prevBtn" onclick="cambiarPagina(-1)">← Ant.</button>
+        <button class="pag-btn" id="nextBtn" onclick="cambiarPagina(1)">Sig. →</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Modal Config -->
+<div class="modal-bg" id="modalCfgBg">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title">⚙ Configuración</div>
+      <button class="modal-close" onclick="cerrarModalCfg()">×</button>
+    </div>
+    <div class="modal-body" id="modalCfgBody"></div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="cerrarModalCfg()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarCfg()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Nota -->
+<div class="modal-bg" id="modalNotaBg">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-head">
+      <div class="modal-title">📝 Nota orden <span id="notaNum"></span></div>
+      <button class="modal-close" onclick="cerrarNota()">×</button>
+    </div>
+    <div class="modal-body">
+      <textarea class="modal-textarea" id="notaTxt" placeholder="Escribí una nota sobre esta orden…" style="min-height:140px"></textarea>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="cerrarNota()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarNota()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// CONFIG — endpoints
+// ═══════════════════════════════════════════════════════════════
+const PROXY = "https://mg-tracking-proxy.brunoromeroc.workers.dev";
+const APPS_SCRIPT = "https://script.google.com/macros/s/AKfycbxd-XtkTH9Iw1SiQ5cC211DZ8d_nGwx8AEmVLX7khJDfAXzjaFfY7XIcB4N5JKq7QWpNg/exec";
+
+const PER_PAGE_UI = 20;
+const DEMORA_DIAS = 5;
+const TTL = { entregado:86400000, en_sucursal:86400000, en_camino:21600000,
+              intento_entrega:21600000, procesando:10800000, sin_datos:1800000 };
+
+// ═══════════════════════════════════════════════════════════════
+// CONFIG — local (plantillas + days)
+// ═══════════════════════════════════════════════════════════════
+function getCfg() {
+  const d = JSON.parse(localStorage.getItem("mg_cfg_v3") || "{}");
+  return {
+    reviewLink:   d.reviewLink   || "https://g.page/r/CdyT9LrBkbU_EAE/review",
+    days:         d.days         || 30,
+    tplReview:    d.tplReview    ||
+      "Hola {nombre} 👋 Espero que hayas recibido tu pedido #{orden} de Market Gamer y que todo esté perfecto.\n\n¿Podés dejarnos una reseña? Solo hace clic acá ⭐\n{link_review}\n\nSi tuviste algún problema, respondé este mensaje y lo resolvemos. Gracias! 🎮",
+    tplTracking:  d.tplTracking  ||
+      "Hola {nombre} 👋 Tu pedido #{orden} de Market Gamer ya está en camino.\n\nPodés ver el estado de tu envío acá:\n{tracking_link}\n\nCualquier consulta estamos acá. Gracias! 🎮",
+  };
+}
+function saveCfg(c) { localStorage.setItem("mg_cfg_v3", JSON.stringify(c)); }
+
+// ═══════════════════════════════════════════════════════════════
+// ESTADO GLOBAL
+// ═══════════════════════════════════════════════════════════════
+let todasOrdenes = [];
+let filtroActivo = "todas";
+let paginaActual = 1;
+let persistedState = {};      // {orderId: {wa_chat_at, wa_tracking_at, wa_review_at, nota, updated_at}}
+let caCache = {};              // {trackingCode: {status, eventos, ts}}
+
+// ═══════════════════════════════════════════════════════════════
+// SYNC STATUS
+// ═══════════════════════════════════════════════════════════════
+function setSync(status, msg) {
+  const dot = document.getElementById("syncDot");
+  const txt = document.getElementById("syncText");
+  dot.className = "sync-dot " + status;
+  txt.textContent = msg;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// APPS SCRIPT API
+// ═══════════════════════════════════════════════════════════════
+async function ssGetAll() {
+  setSync("syncing","Sincronizando…");
+  try {
+    const r = await fetch(APPS_SCRIPT + "?action=get_all");
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || "Error apps script");
+    persistedState = j.data || {};
+    setSync("ok","Sincronizado " + new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"}));
+    return persistedState;
+  } catch(e) {
+    setSync("error","Error sync: " + e.message);
+    throw e;
+  }
+}
+
+async function ssUpsert(orderId, patch) {
+  // Optimistic update local primero
+  const id = String(orderId);
+  if (!persistedState[id]) persistedState[id] = {};
+  Object.assign(persistedState[id], patch);
+  persistedState[id].updated_at = new Date().toISOString();
+
+  setSync("syncing","Guardando…");
+  try {
+    const r = await fetch(APPS_SCRIPT, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({ action:"upsert", order_id:id, patch })
+    });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || "Error upsert");
+    setSync("ok","Guardado " + new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"}));
+  } catch(e) {
+    setSync("error","Error guardando: " + e.message);
+    alert("⚠ No se pudo guardar en la nube. Reintentá: " + e.message);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HELPERS — carrier, retiro, tracking
+// ═══════════════════════════════════════════════════════════════
+function detectarCarrier(o) {
+  const code = String(o.shipping_option_code || "").toLowerCase();
+  const name = String(o.shipping || "").toLowerCase();
+  const opt  = String(o.shipping_option || "").toLowerCase();
+  const blob = code + " " + name + " " + opt;
+  if (blob.includes("andreani")) return "andreani";
+  if (blob.includes("correo") || blob.includes("ca")) return "ca";
+  return "ca"; // default
+}
+
+function esRetiroLocal(o) {
+  if (o.shipping_pickup_type === "pickup") return true;
+  const code = String(o.shipping_option_code || "").toLowerCase();
+  const opt  = String(o.shipping_option || "").toLowerCase();
+  if (code.includes("retiro") || code.includes("pickup") || code.includes("local")) return true;
+  if (opt.includes("retiro") || opt.includes("pickup") || opt.includes("local")) return true;
+  return false;
+}
+
+function extraerTracking(o) {
+  if (o.shipping_tracking_number) return String(o.shipping_tracking_number).trim();
+  if (o.fulfillments?.length) for (const f of o.fulfillments) if (f.tracking_number) return String(f.tracking_number).trim();
+  if (o.packages?.length) for (const p of o.packages) {
+    if (p.tracking_number) return String(p.tracking_number).trim();
+    if (p.shipping_tracking_code) return String(p.shipping_tracking_code).trim();
+  }
+  return "";
+}
+
+function trackingLink(carrier, codigo) {
+  if (carrier === "andreani") return `https://www.andreani.com/#!/informacionEnvio/${encodeURIComponent(codigo)}`;
+  return `https://www.correoargentino.com.ar/formularios/e-commerce?id=${encodeURIComponent(codigo)}`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CACHE CA (en memoria — se rebuilda al refrescar)
+// ═══════════════════════════════════════════════════════════════
+function getCacheCA(code) {
+  const d = caCache[code];
+  if (!d) return null;
+  const ttl = TTL[d.status] || TTL.sin_datos;
+  if (Date.now() - d.ts > ttl) { delete caCache[code]; return null; }
+  return d;
+}
+function setCacheCA(code, data) { caCache[code] = { ...data, ts: Date.now() }; }
+
+// ═══════════════════════════════════════════════════════════════
+// DETECCIÓN DE ESTADO CONSOLIDADO
+// ═══════════════════════════════════════════════════════════════
+function getEstado(o) {
+  // retorna: 'retiro_local' | 'sin_despachar' | 'por_enviar' | 'en_transito' | 'entregada'
+  if (esRetiroLocal(o)) return "retiro_local";
+
+  const codigo = extraerTracking(o);
+  const carrier = detectarCarrier(o);
+  const ca = (carrier === "ca" && codigo) ? getCacheCA(codigo) : null;
+  const caStatus = ca?.status || "";
+
+  // Entregada: TN dice delivered, o CA confirma
+  const entregada = o.shipping_status === "delivered" || caStatus === "entregado" || caStatus === "en_sucursal";
+  if (entregada) return "entregada";
+
+  // Sin despachar: ni shipped_at ni shipping_status shipped
+  const despachada = o.shipping_status === "shipped" || o.shipping_status === "fulfilled" || !!o.shipped_at;
+  if (!despachada) return "sin_despachar";
+
+  // Despachada — ¿en tránsito o por enviar?
+  if (carrier === "andreani") {
+    // Andreani sin scrape → si shipped_at hace mucho asumimos tránsito; sin tracking aún = por_enviar
+    if (codigo) return "en_transito";
+    return "por_enviar";
+  } else {
+    // CA con código y CA dice algo de movimiento
+    if (codigo && ca && ["en_camino","intento_entrega","procesando"].includes(caStatus)) return "en_transito";
+    if (codigo && (!ca || caStatus === "sin_datos" || caStatus === "")) {
+      // Despachada hace +2 días sin movimiento de correo → por_enviar
+      const dias = o.shipped_at ? (Date.now() - new Date(o.shipped_at).getTime())/86400000 : 0;
+      if (dias < 2) return "por_enviar";
+      return "en_transito"; // suponemos en tránsito aunque CA no reporte
+    }
+    if (!codigo) return "por_enviar";
+  }
+  return "por_enviar";
+}
+
+function esDemorada(o) {
+  if (!o.shipped_at) return false;
+  const dias = (Date.now() - new Date(o.shipped_at).getTime()) / 86400000;
+  if (dias < DEMORA_DIAS) return false;
+  const e = getEstado(o);
+  if (e === "entregada" || e === "retiro_local") return false;
+  // Si CA reporta movimiento reciente, no es demora
+  const codigo = extraerTracking(o);
+  const ca = codigo ? getCacheCA(codigo) : null;
+  if (ca?.eventos?.length) {
+    const ultimoEvento = ca.eventos[0];
+    // Si el último evento del correo es reciente, no es demora
+    // (ya que está moviéndose, aunque no esté entregada)
+    if (ca.status === "en_camino" || ca.status === "intento_entrega") {
+      return false;
+    }
+  }
+  return true;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// FETCH ÓRDENES
+// ═══════════════════════════════════════════════════════════════
+async function cargarOrdenes(force=false) {
+  const btn = document.getElementById("refreshBtn");
+  btn.disabled = true; btn.textContent = "↻ Cargando…";
+  const cfg = getCfg();
+  const desde = new Date(Date.now() - cfg.days*86400000).toISOString();
+  document.getElementById("tbody").innerHTML =
+    `<tr class="loading-row"><td colspan="8"><div class="big-spinner"></div>Cargando órdenes…</td></tr>`;
+  try {
+    // 1. Sync de estado persistido
+    await ssGetAll();
+
+    // 2. Fetch órdenes
+    let todas = [], pag = 1, seguir = true;
+    while (seguir) {
+      const r = await fetch(`${PROXY}/?type=orders&per_page=50&page=${pag}&created_at_min=${desde}`);
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      const batch = await r.json();
+      if (!Array.isArray(batch) || !batch.length) { seguir = false; break; }
+      todas = todas.concat(batch);
+      if (batch.length < 50) { seguir = false; break; }
+      if (++pag > 20) break;
+    }
+    todasOrdenes = todas.sort((a,b) => b.number - a.number);
+
+    actualizarStats(); actualizarBanner(); actualizarCounts();
+    paginaActual = 1; filtrarYRenderizar();
+    consultarCAEnBackground(force);
+  } catch(e) {
+    document.getElementById("tbody").innerHTML =
+      `<tr class="empty-row"><td colspan="8">⚠ Error: ${e.message}</td></tr>`;
+    setSync("error","Error: "+e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = "↻ Actualizar";
+  }
+}
+
+async function consultarCAEnBackground(force=false) {
+  // Solo CA con tracking (Andreani no se scrapea)
+  const conTracking = todasOrdenes.filter(o => {
+    if (esRetiroLocal(o)) return false;
+    if (detectarCarrier(o) !== "ca") return false;
+    return !!extraerTracking(o);
+  });
+  const cola = [...conTracking];
+  async function lote() {
+    const batch = cola.splice(0, 3);
+    if (!batch.length) return;
+    await Promise.all(batch.map(o => consultarCAOrden(o, force)));
+    actualizarStats(); actualizarBanner(); actualizarCounts(); filtrarYRenderizar();
+    await lote();
+  }
+  await lote();
+}
+
+async function consultarCAOrden(orden, force=false) {
+  const codigo = extraerTracking(orden);
+  if (!codigo) return;
+  if (!force && getCacheCA(codigo)) return;
+  try {
+    const r = await fetch(`${PROXY}/?type=tracking&id=${encodeURIComponent(codigo)}`);
+    if (r.ok) setCacheCA(codigo, await r.json());
+  } catch {}
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HELPERS DE RENDER
+// ═══════════════════════════════════════════════════════════════
+function formatFecha(iso) {
+  try { return new Date(iso).toLocaleDateString("es-AR",{day:"2-digit",month:"short",year:"numeric"}); }
+  catch { return "—"; }
+}
+function nombreProducto(p) {
+  const n = p.name;
+  return typeof n === "string" ? n : (n?.es || Object.values(n||{})[0] || "Producto");
+}
+function caStatusInfo(s) {
+  const m = {
+    entregado:{label:"Entregado",cls:"entregado"},
+    en_sucursal:{label:"En sucursal",cls:"entregado"},
+    en_camino:{label:"En camino",cls:"en_camino"},
+    intento_entrega:{label:"Intento entrega",cls:"intento_entrega"},
+    procesando:{label:"Procesando",cls:"procesando"},
+    devuelto:{label:"Devuelto",cls:"devuelto"},
+    en_transito:{label:"En tránsito",cls:"en_camino"},
+    sin_datos:{label:"Sin datos",cls:"sin_datos"},
+  };
+  return m[s] || { label: s||"—", cls:"sin_datos" };
+}
+function escHtml(s) { return String(s||"").replace(/&/g,"&amp;").replace(/'/g,"&#39;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function escAttr(s) { return String(s||"").replace(/\\/g,"\\\\").replace(/'/g,"\\'").replace(/\n/g,"\\n"); }
+
+// ═══════════════════════════════════════════════════════════════
+// FILTROS Y CONTADORES
+// ═══════════════════════════════════════════════════════════════
+function setFiltro(f, el) {
+  filtroActivo = f;
+  document.querySelectorAll(".filter-tab").forEach(t => t.classList.remove("active"));
+  if (el) el.classList.add("active");
+  else {
+    // Click vino del banner
+    const tab = document.querySelector(`.filter-tab[data-f="${f}"]`);
+    if (tab) tab.classList.add("active");
+  }
+  paginaActual = 1; filtrarYRenderizar();
+}
+
+function pasaFiltro(o, filtro) {
+  const e = getEstado(o);
+  if (filtro === "todas") return e !== "retiro_local"; // retiro tiene su propio filtro
+  if (filtro === "retiro_local") return e === "retiro_local";
+  if (filtro === "sin_despachar") return e === "sin_despachar";
+  if (filtro === "por_enviar") return e === "por_enviar";
+  if (filtro === "en_transito") return e === "en_transito";
+  if (filtro === "entregadas") return e === "entregada";
+  if (filtro === "pend_review") return e === "entregada" && !persistedState[o.number]?.wa_review_at;
+  if (filtro === "demoras") return esDemorada(o);
+  return true;
+}
+
+function filtrarYRenderizar() {
+  const q = (document.getElementById("searchInput")?.value || "").toLowerCase().trim();
+  let lista = todasOrdenes.filter(o => {
+    if (q) {
+      const nombre = (o.contact_name||"").toLowerCase();
+      const phone  = (o.contact_phone||o.billing_phone||"").toLowerCase();
+      const num    = String(o.number);
+      if (!nombre.includes(q) && !phone.includes(q) && !num.includes(q)) return false;
+    }
+    return pasaFiltro(o, filtroActivo);
+  });
+  const total = lista.length;
+  const totalPags = Math.max(1, Math.ceil(total/PER_PAGE_UI));
+  if (paginaActual > totalPags) paginaActual = totalPags;
+  const inicio = (paginaActual-1) * PER_PAGE_UI;
+  document.getElementById("pageInfo").textContent = `${total} resultados · Pág ${paginaActual} de ${totalPags}`;
+  document.getElementById("prevBtn").disabled = paginaActual <= 1;
+  document.getElementById("nextBtn").disabled = paginaActual >= totalPags;
+  renderTabla(lista.slice(inicio, inicio+PER_PAGE_UI));
+}
+
+function cambiarPagina(d) { paginaActual += d; filtrarYRenderizar(); window.scrollTo({top:0,behavior:"smooth"}); }
+
+function actualizarStats() {
+  let entregadas = 0, pendReview = 0, transito = 0;
+  for (const o of todasOrdenes) {
+    const e = getEstado(o);
+    if (e === "entregada") {
+      entregadas++;
+      if (!persistedState[o.number]?.wa_review_at) pendReview++;
+    } else if (e === "en_transito") transito++;
+  }
+  document.getElementById("statTotal").textContent = todasOrdenes.length;
+  document.getElementById("statEntregadas").textContent = entregadas;
+  document.getElementById("statPendReview").textContent = pendReview;
+  document.getElementById("statTransito").textContent = transito;
+}
+
+function actualizarBanner() {
+  const demoras = todasOrdenes.filter(esDemorada).length;
+  const review = todasOrdenes.filter(o => getEstado(o)==="entregada" && !persistedState[o.number]?.wa_review_at).length;
+  document.getElementById("alertDemorasCount").textContent = demoras;
+  document.getElementById("alertReviewCount").textContent = review;
+  document.getElementById("alertDemoras").classList.toggle("has-items", demoras > 0);
+  document.getElementById("alertReview").classList.toggle("has-items", review > 0);
+}
+
+function actualizarCounts() {
+  const counts = { todas:0, sin_despachar:0, por_enviar:0, en_transito:0, entregadas:0, retiro_local:0, pend_review:0 };
+  for (const o of todasOrdenes) {
+    const e = getEstado(o);
+    if (e !== "retiro_local") counts.todas++;
+    if (e === "sin_despachar") counts.sin_despachar++;
+    if (e === "por_enviar")   counts.por_enviar++;
+    if (e === "en_transito")  counts.en_transito++;
+    if (e === "entregada")    counts.entregadas++;
+    if (e === "retiro_local") counts.retiro_local++;
+    if (e === "entregada" && !persistedState[o.number]?.wa_review_at) counts.pend_review++;
+  }
+  Object.keys(counts).forEach(k => {
+    const el = document.getElementById("cnt-"+k);
+    if (el) el.textContent = `(${counts[k]})`;
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER TABLA
+// ═══════════════════════════════════════════════════════════════
+function renderTabla(lista) {
+  const tbody = document.getElementById("tbody");
+  if (!lista.length) {
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="8">No hay órdenes para este filtro.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = lista.map(o => {
+    const num     = o.number;
+    const nombre  = o.contact_name || o.contact_email || "—";
+    const phone   = o.contact_phone || o.billing_phone || "";
+    const prod1   = (o.products||[]).map(p => nombreProducto(p)).join(", ") || "—";
+    const total   = "$" + parseFloat(o.total||0).toLocaleString("es-AR",{maximumFractionDigits:0});
+    const codigo  = extraerTracking(o);
+    const carrier = detectarCarrier(o);
+    const estado  = getEstado(o);
+    const ps      = persistedState[num] || {};
+
+    // Tracking cell
+    let trackingCell;
+    if (estado === "retiro_local") {
+      trackingCell = `<span class="tracking-none">Retiro Vilanova</span>`;
+    } else if (codigo) {
+      const link = trackingLink(carrier, codigo);
+      trackingCell = `<a class="tracking-code" href="${link}" target="_blank" title="Ver en ${carrier==="andreani"?"Andreani":"Correo Argentino"}">${codigo.substring(0,18)}…</a><span class="carrier-mini ${carrier}">${carrier==="andreani"?"AND":"CA"}</span>`;
+    } else {
+      trackingCell = `<span class="tracking-none">—</span>`;
+    }
+
+    // Badge
+    let badge;
+    if (estado === "retiro_local") {
+      badge = `<span class="badge retiro"><span class="badge-dot"></span>Retiro local</span>`;
+    } else if (estado === "sin_despachar") {
+      badge = `<span class="badge sin_despachar"><span class="badge-dot"></span>Sin despachar</span>`;
+    } else if (estado === "por_enviar") {
+      badge = `<span class="badge por_enviar"><span class="badge-dot"></span>Por enviar</span>`;
+    } else if (estado === "entregada") {
+      badge = `<span class="badge entregado"><span class="badge-dot"></span>Entregado</span>`;
+    } else if (carrier === "andreani") {
+      badge = codigo
+        ? `<span class="badge en_camino"><span class="badge-dot"></span>En tránsito</span>`
+        : `<span class="badge sin_datos"><span class="badge-dot"></span>Sin tracking</span>`;
+    } else {
+      // CA en tránsito
+      const ca = codigo ? getCacheCA(codigo) : null;
+      if (!codigo) badge = `<span class="badge sin_datos"><span class="badge-dot"></span>Sin tracking</span>`;
+      else if (!ca) badge = `<span class="badge cargando"><span class="badge-spinner"></span>Consultando…</span>`;
+      else { const i = caStatusInfo(ca.status); badge = `<span class="badge ${i.cls}"><span class="badge-dot"></span>${i.label}</span>`; }
+    }
+
+    // Demora indicator
+    if (esDemorada(o)) {
+      badge += ` <span class="badge devuelto" title="Sin movimiento hace +${DEMORA_DIAS} días"><span class="badge-dot"></span>⚠ Demora</span>`;
+    }
+
+    // Fecha entrega
+    let fechaEntrega = `<span class="delivery-dash">—</span>`;
+    if (estado === "entregada") {
+      const ca = codigo && carrier==="ca" ? getCacheCA(codigo) : null;
+      if (ca?.eventos?.length) {
+        const f = ca.eventos[0].split(" | ")[0];
+        if (f) fechaEntrega = `<span class="delivery-date">${f.split(" ")[0]}</span>`;
+      } else if (o.shipping_status === "delivered") {
+        fechaEntrega = `<span class="delivery-date">${formatFecha(o.shipped_at || o.updated_at)}</span>`;
+      }
+    }
+
+    // ── BOTONES ──
+    const escNombre = escAttr(nombre);
+    const escPhone  = escAttr(phone);
+    const escProd   = escAttr(prod1);
+    const escCodigo = escAttr(codigo);
+
+    // 1. WA chat (sin mensaje)
+    const usedChat = !!ps.wa_chat_at;
+    const titleChat = usedChat ? `Enviado: ${formatFecha(ps.wa_chat_at)} · shift+click para limpiar` : "Abrir WhatsApp";
+    const btnWA = phone
+      ? `<button class="act-btn act-wa ${usedChat?'used':''}" onclick="accionWA(event,${num},'chat','${escPhone}')" title="${titleChat}">💬 WA</button>`
+      : `<button class="act-btn act-wa" disabled title="Sin teléfono">💬 WA</button>`;
+
+    // 2. WA tracking
+    const usedTrack = !!ps.wa_tracking_at;
+    const titleTrack = usedTrack ? `Enviado: ${formatFecha(ps.wa_tracking_at)} · shift+click para limpiar` : "Enviar tracking por WA";
+    const puedeTrack = phone && codigo && estado !== "retiro_local";
+    const btnTrack = puedeTrack
+      ? `<button class="act-btn act-track ${usedTrack?'used':''}" onclick="accionWA(event,${num},'tracking','${escPhone}','${escNombre}','${escProd}','${escCodigo}','${carrier}')" title="${titleTrack}">📦 Track</button>`
+      : `<button class="act-btn act-track" disabled title="${!phone?'Sin teléfono':!codigo?'Sin tracking':'Retiro en local'}">📦 Track</button>`;
+
+    // 3. WA review (solo si entregada o retiro local)
+    let btnReview = "";
+    const puedeReview = estado === "entregada" || estado === "retiro_local";
+    if (puedeReview) {
+      const usedRev = !!ps.wa_review_at;
+      const titleRev = usedRev ? `Enviado: ${formatFecha(ps.wa_review_at)} · shift+click para limpiar` : "Pedir review por WA";
+      btnReview = phone
+        ? `<button class="act-btn act-review ${usedRev?'used':''}" onclick="accionWA(event,${num},'review','${escPhone}','${escNombre}','${escProd}')" title="${titleRev}">⭐ Review</button>`
+        : `<button class="act-btn act-review" disabled title="Sin teléfono">⭐ Review</button>`;
+    }
+
+    // 4. Andreani — botón "Ver en sitio" si Andreani
+    let btnAndreani = "";
+    if (carrier === "andreani" && codigo && estado !== "retiro_local") {
+      btnAndreani = `<a class="act-btn act-andreani" href="${trackingLink('andreani',codigo)}" target="_blank" title="Ver en Andreani">🔗 And</a>`;
+    }
+
+    // 5. Nota
+    const nota = ps.nota || "";
+    const btnNota = `<button class="act-btn act-note" onclick="abrirNota(${num})" title="${nota?'Ver/editar nota':'Agregar nota'}">${nota?"📝":"🗒"}</button>`;
+
+    return `<tr>
+      <td><span class="order-num">#${num}</span></td>
+      <td style="white-space:nowrap;color:var(--muted2);font-size:12px">${formatFecha(o.created_at)}</td>
+      <td>
+        <div class="customer-name">${escHtml(nombre)}</div>
+        <div class="customer-sub">${phone?"📱 "+phone:""}${phone&&o.contact_email?" · ":""}${o.contact_email?"✉ "+o.contact_email:""}</div>
+      </td>
+      <td><span class="total-val">${total}</span></td>
+      <td>${trackingCell}</td>
+      <td>${badge}</td>
+      <td>${fechaEntrega}</td>
+      <td><div class="actions">${btnWA}${btnTrack}${btnReview}${btnAndreani}${btnNota}</div></td>
+    </tr>`;
+  }).join("");
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ACCIÓN WA UNIFICADA
+// ═══════════════════════════════════════════════════════════════
+async function accionWA(event, num, tipo, phone, nombre, prod, codigo, carrier) {
+  // Shift+click → limpiar marca
+  if (event.shiftKey) {
+    if (!confirm("¿Limpiar la marca de "+tipo+" para la orden #"+num+"?")) return;
+    const field = tipo === "chat" ? "wa_chat_at" : tipo === "tracking" ? "wa_tracking_at" : "wa_review_at";
+    await ssUpsert(num, { [field]: "" });
+    actualizarStats(); actualizarBanner(); actualizarCounts(); filtrarYRenderizar();
+    return;
+  }
+
+  // Construir URL whatsapp://
+  const tel = String(phone).replace(/\D/g,"");
+  const full = tel.startsWith("54") ? tel : "54"+tel;
+  const cfg = getCfg();
+  let msg = "";
+
+  if (tipo === "tracking") {
+    const link = trackingLink(carrier, codigo);
+    msg = cfg.tplTracking
+      .replace(/\{nombre\}/g, nombre)
+      .replace(/\{producto\}/g, prod)
+      .replace(/\{orden\}/g, "#"+num)
+      .replace(/\{tracking\}/g, codigo)
+      .replace(/\{tracking_link\}/g, link);
+  } else if (tipo === "review") {
+    msg = cfg.tplReview
+      .replace(/\{nombre\}/g, nombre)
+      .replace(/\{producto\}/g, prod)
+      .replace(/\{orden\}/g, "#"+num)
+      .replace(/\{link_review\}/g, cfg.reviewLink);
+  }
+
+  const url = msg
+    ? `whatsapp://send?phone=${full}&text=${encodeURIComponent(msg)}`
+    : `whatsapp://send?phone=${full}`;
+
+  // Abrir WhatsApp (deep link)
+  window.location.href = url;
+
+  // Marcar timestamp si no estaba
+  const field = tipo === "chat" ? "wa_chat_at" : tipo === "tracking" ? "wa_tracking_at" : "wa_review_at";
+  const ps = persistedState[num] || {};
+  if (!ps[field]) {
+    await ssUpsert(num, { [field]: new Date().toISOString() });
+    actualizarStats(); actualizarBanner(); actualizarCounts(); filtrarYRenderizar();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MODAL NOTA
+// ═══════════════════════════════════════════════════════════════
+let notaActualNum = null;
+function abrirNota(num) {
+  notaActualNum = num;
+  const ps = persistedState[num] || {};
+  document.getElementById("notaNum").textContent = "#"+num;
+  document.getElementById("notaTxt").value = ps.nota || "";
+  document.getElementById("modalNotaBg").classList.add("open");
+}
+function cerrarNota() { document.getElementById("modalNotaBg").classList.remove("open"); }
+async function guardarNota() {
+  const txt = document.getElementById("notaTxt").value.trim();
+  await ssUpsert(notaActualNum, { nota: txt });
+  cerrarNota(); filtrarYRenderizar();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MODAL CONFIG
+// ═══════════════════════════════════════════════════════════════
+function abrirModalCfg() {
+  const cfg = getCfg();
+  document.getElementById("modalCfgBody").innerHTML = `
+    <div class="modal-section-title">Días de órdenes a cargar</div>
+    <input class="modal-input" id="mDays" type="number" min="1" max="365" value="${cfg.days}">
+
+    <div class="modal-section-title">Link review (Google)</div>
+    <input class="modal-input" id="mReviewLink" type="text" value="${escHtml(cfg.reviewLink)}">
+
+    <div class="modal-section-title">📦 Plantilla — Tracking por WA</div>
+    <textarea class="modal-textarea" id="mTplTracking" rows="6">${escHtml(cfg.tplTracking)}</textarea>
+    <div class="modal-hint">Variables: {nombre} {orden} {tracking} {tracking_link} {producto}</div>
+
+    <div class="modal-section-title">⭐ Plantilla — Review por WA</div>
+    <textarea class="modal-textarea" id="mTplReview" rows="6">${escHtml(cfg.tplReview)}</textarea>
+    <div class="modal-hint">Variables: {nombre} {orden} {producto} {link_review}</div>
+  `;
+  document.getElementById("modalCfgBg").classList.add("open");
+}
+function cerrarModalCfg() { document.getElementById("modalCfgBg").classList.remove("open"); }
+function guardarCfg() {
+  const c = {
+    days:        Math.max(1, parseInt(document.getElementById("mDays").value)||30),
+    reviewLink:  document.getElementById("mReviewLink").value.trim() || getCfg().reviewLink,
+    tplTracking: document.getElementById("mTplTracking").value || getCfg().tplTracking,
+    tplReview:   document.getElementById("mTplReview").value   || getCfg().tplReview,
+  };
+  saveCfg(c); cerrarModalCfg();
+  cargarOrdenes(true);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════
+window.addEventListener("DOMContentLoaded", () => cargarOrdenes());
+
+// Cerrar modales con ESC
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") { cerrarModalCfg(); cerrarNota(); }
+});
+</script>
+</body>
+</html>
