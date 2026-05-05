@@ -646,11 +646,19 @@ function pasaFiltro(o, filtro) {
 }
 
 // Una orden puede recibir review si está entregada (CA/TN delivered)
-// o si es retiro local y se cerró (closed_at)
+// o si es retiro local con cualquier señal de procesado:
+// - closed_at (cerrada manualmente por Facu)
+// - shipped_at (marcada como enviada)
+// - shipping_status shipped o delivered
+// Cubre: retiros reales, ventas a convenir mandadas por moto, ventas presenciales, etc.
 function puedePedirReview(o) {
   const e = getEstado(o);
   if (e === "entregada") return true;
-  if (e === "retiro_local" && o.closed_at) return true;
+  if (e === "retiro_local") {
+    if (o.closed_at) return true;
+    if (o.shipped_at) return true;
+    if (o.shipping_status === "shipped" || o.shipping_status === "delivered") return true;
+  }
   return false;
 }
 
@@ -804,26 +812,35 @@ function renderTabla(lista) {
 
     // 1. WA chat (sin mensaje)
     const usedChat = !!ps.wa_chat_at;
-    const titleChat = usedChat ? `Enviado: ${formatFecha(ps.wa_chat_at)} · shift+click para limpiar` : "Abrir WhatsApp";
+    const titleChat = usedChat
+      ? `✓ Enviado ${formatFecha(ps.wa_chat_at)} · click para reabrir WA · shift+click para limpiar marca`
+      : "Abrir WhatsApp";
+    const labelChat = usedChat ? "✓ WA" : "💬 WA";
     const btnWA = phone
-      ? `<button class="act-btn act-wa ${usedChat?'used':''}" onclick="accionWA(event,${num},'chat','${escPhone}')" title="${titleChat}">💬 WA</button>`
+      ? `<button class="act-btn act-wa ${usedChat?'used':''}" onclick="accionWA(event,${num},'chat','${escPhone}')" title="${titleChat}">${labelChat}</button>`
       : `<button class="act-btn act-wa" disabled title="Sin teléfono">💬 WA</button>`;
 
     // 2. WA tracking
     const usedTrack = !!ps.wa_tracking_at;
-    const titleTrack = usedTrack ? `Enviado: ${formatFecha(ps.wa_tracking_at)} · shift+click para limpiar` : "Enviar tracking por WA";
+    const titleTrack = usedTrack
+      ? `✓ Enviado ${formatFecha(ps.wa_tracking_at)} · click para reenviar · shift+click para limpiar marca`
+      : "Enviar tracking por WhatsApp";
+    const labelTrack = usedTrack ? "✓ Track" : "📦 Track";
     const puedeTrack = phone && codigo && estado !== "retiro_local";
     const btnTrack = puedeTrack
-      ? `<button class="act-btn act-track ${usedTrack?'used':''}" onclick="accionWA(event,${num},'tracking','${escPhone}','${escNombre}','${escProd}','${escCodigo}','${carrier}')" title="${titleTrack}">📦 Track</button>`
+      ? `<button class="act-btn act-track ${usedTrack?'used':''}" onclick="accionWA(event,${num},'tracking','${escPhone}','${escNombre}','${escProd}','${escCodigo}','${carrier}')" title="${titleTrack}">${labelTrack}</button>`
       : `<button class="act-btn act-track" disabled title="${!phone?'Sin teléfono':!codigo?'Sin tracking':'Retiro en local'}">📦 Track</button>`;
 
-    // 3. WA review (solo si entregada o retiro cerrado)
+    // 3. WA review (entregadas + retiros procesados)
     let btnReview = "";
     if (puedePedirReview(o)) {
       const usedRev = !!ps.wa_review_at;
-      const titleRev = usedRev ? `Enviado: ${formatFecha(ps.wa_review_at)} · shift+click para limpiar` : "Pedir review por WA";
+      const titleRev = usedRev
+        ? `✓ Enviada ${formatFecha(ps.wa_review_at)} · click para reenviar · shift+click para limpiar marca`
+        : "Pedir review por WhatsApp";
+      const labelRev = usedRev ? "✓ Review" : "⭐ Review";
       btnReview = phone
-        ? `<button class="act-btn act-review ${usedRev?'used':''}" onclick="accionWA(event,${num},'review','${escPhone}','${escNombre}','${escProd}')" title="${titleRev}">⭐ Review</button>`
+        ? `<button class="act-btn act-review ${usedRev?'used':''}" onclick="accionWA(event,${num},'review','${escPhone}','${escNombre}','${escProd}')" title="${titleRev}">${labelRev}</button>`
         : `<button class="act-btn act-review" disabled title="Sin teléfono">⭐ Review</button>`;
     }
 
@@ -857,10 +874,12 @@ function renderTabla(lista) {
 // ACCIÓN WA UNIFICADA
 // ═══════════════════════════════════════════════════════════════
 async function accionWA(event, num, tipo, phone, nombre, prod, codigo, carrier) {
-  // Shift+click → limpiar marca
-  if (event.shiftKey) {
+  const field = tipo === "chat" ? "wa_chat_at" : tipo === "tracking" ? "wa_tracking_at" : "wa_review_at";
+  const ps = persistedState[num] || {};
+
+  // Shift+click → limpiar marca (solo si estaba marcado)
+  if (event.shiftKey && ps[field]) {
     if (!confirm("¿Limpiar la marca de "+tipo+" para la orden #"+num+"?")) return;
-    const field = tipo === "chat" ? "wa_chat_at" : tipo === "tracking" ? "wa_tracking_at" : "wa_review_at";
     await ssUpsert(num, { [field]: "" });
     actualizarStats(); actualizarBanner(); actualizarCounts(); filtrarYRenderizar();
     return;
@@ -895,13 +914,9 @@ async function accionWA(event, num, tipo, phone, nombre, prod, codigo, carrier) 
   // Abrir WhatsApp (deep link)
   window.location.href = url;
 
-  // Marcar timestamp si no estaba
-  const field = tipo === "chat" ? "wa_chat_at" : tipo === "tracking" ? "wa_tracking_at" : "wa_review_at";
-  const ps = persistedState[num] || {};
-  if (!ps[field]) {
-    await ssUpsert(num, { [field]: new Date().toISOString() });
-    actualizarStats(); actualizarBanner(); actualizarCounts(); filtrarYRenderizar();
-  }
+  // Marca/actualiza timestamp SIEMPRE (cada vez que se aprieta = "último envío")
+  await ssUpsert(num, { [field]: new Date().toISOString() });
+  actualizarStats(); actualizarBanner(); actualizarCounts(); filtrarYRenderizar();
 }
 
 // ═══════════════════════════════════════════════════════════════
